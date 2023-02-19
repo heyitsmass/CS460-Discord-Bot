@@ -87,14 +87,7 @@ class VariationView(discord.ui.View):
     for i in range(num): 
       super().add_item(uButton(label=f"U{i}", row=1, link=data[i]['url'], id=i)) 
 
-
-    
-
-
-
-
-
-
+      
 intents = discord.Intents.default() 
 intents.message_content = True 
 intents.reactions = True 
@@ -120,15 +113,7 @@ async def imagine(inter:discord.Interaction, prompt:str):
 
   
   await inter.followup.send(view=view, embeds=[discord.Embed(url="https://heyitsmass.dev/").set_image(url=r['url']) for r in res['data']]); 
-
-
-
-    
-
+  
 openai.api_key = os.environ['OPEN_AI_TOKEN']
-openai.Model.list(); 
 bot.run(os.environ['DISCORD_TOKEN'])
-
-
-
 
