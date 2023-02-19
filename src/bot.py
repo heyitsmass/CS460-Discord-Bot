@@ -105,7 +105,7 @@ async def imagine(inter:discord.Interaction, prompt:str):
   res = openai.Image.create(
     prompt=prompt, 
     n=num_images, 
-    size="256x256"
+    size="1024x1024"
   )
 
 
