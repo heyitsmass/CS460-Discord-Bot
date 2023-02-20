@@ -27,65 +27,63 @@ class Bot(commands.Bot):
     
     print(f'Logged in as {self.user}') 
 
-class vButton(discord.ui.Button): 
-  def __init__(self, id, link='', **args): 
+class Button(discord.ui.Button): 
+  def __init__(self, id, link='', type='v', **args): 
+
     self.id = id
     self.link = link 
+    self._type = type 
 
     super().__init__(**args) 
 
+  async def callback(self, inter:discord.Interaction):
 
-  async def callback(self, inter:discord.Interaction): 
+    match(self._type): 
+      case 'v': 
 
-    await inter.response.edit_message(content=f"Creating variations for image {self.id}") 
+        await inter.response.edit_message(content=f"Creating variations for image {self.id}") 
 
-    data = requests.get(self.link)
+        data = requests.get(self.link)
 
-    num_images = 4; 
+        num_images = 4; 
 
-    res = openai.Image.create_variation(
-      image=data.content, 
-      n=num_images, 
-      size="1024x1024"
-    )
+        res = openai.Image.create_variation(
+          image=data.content, 
+          n=num_images, 
+          size="1024x1024"
+        )
 
-    view = VariationView(num=num_images, data=res['data']) 
+        view = View(num=num_images, data=res['data']) 
 
-    await inter.followup.send(view=view, embeds=[discord.Embed(url="https://heyitsmass.dev/").set_image(url=r['url']) for r in res['data']]); 
+        await inter.followup.send(view=view, embeds=[discord.Embed(url="https://heyitsmass.dev/").set_image(url=r['url']) for r in res['data']]); 
 
-class uButton(discord.ui.Button):
-  def __init__(self, id, link='', **args): 
-    self.id = id
-    self.link = link 
+      case 'u': 
+        await inter.response.edit_message(content=f"Creating upscale for image {self.id}") 
 
-    super().__init__(**args) 
+        data = requests.get(self.link)
 
-  async def callback(self, inter:discord.Interaction): 
-    await inter.response.edit_message(content=f"Creating upscale for image {self.id}") 
+        base_img = Image.open(io.BytesIO(data.content))
 
-    data = requests.get(self.link)
+        base_img.resize((4096, 4096), resample=Image.BOX).save("new_img.png", "png", optimize=True) 
 
-    base_img = Image.open(io.BytesIO(data.content))
+        with open('new_img.png', 'rb') as f: 
+          
+          await inter.followup.send(file=discord.File(f), ephemeral=True)
 
-    base_img.resize((4096, 4096), resample=Image.BOX).save("new_img.png", "png", optimize=True) 
+        os.remove('new_img.png')
 
-    with open('new_img.png', 'rb') as f: 
-      
-      await inter.followup.send(file=discord.File(f), ephemeral=True)
+      case _: 
+        raise RuntimeError(f"Unknown type: '{type}' *** this is an internal error ***")
 
-    os.remove('new_img.png')
-
-
-
-class VariationView(discord.ui.View): 
+class View(discord.ui.View): 
   def __init__(self, num=0, data=[], **args): 
     super().__init__(**args)
 
     for i in range(num): 
-      super().add_item(vButton(label=f"V{i}", row=0, link=data[i]['url'], id=i))
+      super().add_item(Button(label=f"V{i}", row=0, type='v', link=data[i]['url'], id=i))
 
     for i in range(num): 
-      super().add_item(uButton(label=f"U{i}", row=1, link=data[i]['url'], id=i)) 
+      super().add_item(Button(label=f"U{i}", row=1, type='u', link=data[i]['url'], id=i)) 
 
       
 intents = discord.Intents.default() 
@@ -109,7 +107,7 @@ async def imagine(inter:discord.Interaction, prompt:str):
   )
 
 
-  view = VariationView(num=num_images, data=res['data']) 
+  view = View(num=num_images, data=res['data']) 
 
   
   await inter.followup.send(view=view, embeds=[discord.Embed(url="https://heyitsmass.dev/").set_image(url=r['url']) for r in res['data']]); 
